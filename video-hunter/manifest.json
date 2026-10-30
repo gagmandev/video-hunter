@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "视频猎手 · Video Hunter",
+  "version": "1.0.0",
+  "description": "自动嗅探网页中的视频（MP4 / HLS m3u8 / DASH），一键下载；HLS 自动分片下载并合并，支持 AES-128 解密。",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "webRequest",
+    "downloads",
+    "storage",
+    "offscreen",
+    "tabs",
+    "scripting",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "视频猎手",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  }
+}

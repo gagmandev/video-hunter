@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# ytdl.py 运行时自动下载的东西，不要提交
+yt-dlp.exe
+yt-dlp
+ffmpeg.exe
+downloads/
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+
+# 本地工作数据
+.workbuddy-ai/

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <div class="brand">
+          <img class="logo" src="icons/48.png" alt="" />
+          <div class="brand-text">
+            <h1>视频猎手</h1>
+            <p id="host">正在读取…</p>
+          </div>
+        </div>
+        <div class="tools">
+          <button id="refresh" class="icon-btn" title="重新扫描">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <path d="M21 3v6h-6" />
+            </svg>
+          </button>
+          <button id="clear" class="icon-btn" title="清空本页记录">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18" />
+              <path d="M8 6V4h8v2" />
+              <path d="M19 6l-1 14H6L5 6" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main id="list" class="list"></main>
+
+      <footer class="bottom">
+        <div class="manual">
+          <input id="manual-url" type="text" placeholder="粘贴视频 / m3u8 链接…" spellcheck="false" />
+          <button id="manual-go" class="btn primary">下载</button>
+        </div>
+        <p class="tip">提示：打开页面后点一下播放，能抓到更多清晰度</p>
+      </footer>
+    </div>
+
+    <div id="overlay" class="overlay hidden">
+      <div class="sheet">
+        <div class="sheet-head">
+          <h2 id="sheet-title">选择清晰度</h2>
+          <button id="sheet-close" class="icon-btn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div id="sheet-body" class="sheet-body"></div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
