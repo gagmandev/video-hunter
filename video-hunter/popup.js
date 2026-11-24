@@ -61,6 +61,19 @@ const YT_ITAG = {
 };
 
 function guessFilename(item) {
+  if (item.kind === 'bilibili-dash' || item.kind === 'bilibili-direct' || item.kind === 'bilibili-audio') {
+    const title = (item.meta && item.meta.title) || (pageInfo && pageInfo.title) || (currentTab && currentTab.title) || 'bilibili';
+    const clean = String(title).replace(/\s*-\s*bilibili\s*$/i, '').replace(/[\\/:*?"<>|]/g, '_').trim();
+    if (item.kind === 'bilibili-dash') {
+      const res = item.meta && item.meta.height ? `${item.meta.height}p` : 'dash';
+      return `[${res}] ${clean.slice(0, 60)}.mp4`;
+    }
+    if (item.kind === 'bilibili-audio') {
+      return `[${item.meta.label || 'audio'}] ${clean.slice(0, 60)}.m4a`;
+    }
+    return `${clean.slice(0, 70)}.flv`;
+  }
+
   if (item.kind === 'youtube') {
     const m = String(item.url).match(/[?&]itag=(\d+)/);
     const tag = m ? YT_ITAG[m[1]] || 'itag' + m[1] : '';
@@ -101,6 +114,15 @@ function emptyHtml() {
     </div>`;
   }
 
+  if (/(^|\.)bilibili\.com/i.test(pageUrl)) {
+    return `<div class="empty">${ICON_EMPTY}
+      <strong>B 站视频信息还没读取到</strong>
+      <span>B 站的播放信息通过页面内嵌脚本注入。<br>
+      先点播放，等 1–2 秒后点右上角刷新；<br>
+      如果仍为空，可能是登录/地区/大会员限制导致无可用流。</span>
+    </div>`;
+  }
+
   const hasVideo = pageInfo && pageInfo.videos && pageInfo.videos.length > 0;
   if (hasVideo) {
     const n = pageInfo.videos.length;
@@ -126,16 +148,23 @@ function hostOf(url) {
 
 function cardHtml(item, name) {
   const isYt = item.kind === 'youtube';
-  const label = isYt ? 'YT' : item.kind === 'hls' ? 'HLS' : item.kind === 'dash' ? 'DASH' : 'MP4';
-  const cls = isYt ? 'youtube' : item.kind === 'file' ? 'file' : item.kind;
+  const isBiliDash = item.kind === 'bilibili-dash';
+  const isBiliDirect = item.kind === 'bilibili-direct';
+  const isBiliAudio = item.kind === 'bilibili-audio';
+  const label = isYt ? 'YT' : isBiliDash || isBiliDirect || isBiliAudio ? 'BILI' : item.kind === 'hls' ? 'HLS' : item.kind === 'dash' ? 'DASH' : 'MP4';
+  const cls = isYt ? 'youtube' : isBiliDash || isBiliDirect || isBiliAudio ? 'bilibili' : item.kind === 'file' ? 'file' : item.kind;
   const size = item.size ? fmtSize(item.size) : '大小未知';
   const kindText = isYt
     ? '音视频分离'
-    : item.kind === 'hls'
-      ? '分片流'
-      : item.kind === 'dash'
-        ? '需外部工具'
-        : '直链';
+    : isBiliDash
+      ? '音视频分离'
+      : isBiliAudio
+        ? '纯音频'
+        : item.kind === 'hls'
+          ? '分片流'
+          : item.kind === 'dash'
+            ? '需外部工具'
+            : '直链';
   const meta = [size, hostOf(item.url), kindText].filter(Boolean).join(' · ');
 
   const foot = isYt
@@ -205,6 +234,59 @@ function ytBannerHtml() {
   </div>`;
 }
 
+function biliStreams() {
+  const dash = items.filter((x) => x.kind === 'bilibili-dash').sort((a, b) => (b.meta.height || 0) - (a.meta.height || 0));
+  const directs = items.filter((x) => x.kind === 'bilibili-direct');
+  return { dash, directs };
+}
+
+function biliBannerHtml() {
+  const { dash, directs } = biliStreams();
+  if (!dash.length && !directs.length) return '';
+
+  // 有直链优先展示直链（FLV 是完整文件）
+  if (directs.length) {
+    const d = directs[0];
+    return `<div class="card bili-card" data-id="${esc(d.id)}">
+      <div class="card-head">
+        <span class="badge bilibili">BILI</span>
+        <span class="name">下载完整视频（FLV 直链）</span>
+      </div>
+      <div class="meta">${d.size ? fmtSize(d.size) : '大小未知'} · 单文件，无需合并</div>
+      <div class="card-foot">
+        <button class="btn primary" data-act="download">下载</button>
+      </div>
+      <div class="progress">
+        <div class="track"><div class="bar"></div></div>
+        <span class="ptext">准备中…</span>
+      </div>
+    </div>`;
+  }
+
+  const v = dash[0];
+  const ready = !!v.meta.audioUrl;
+  const total = v.size || 0;
+
+  return `<div class="card bili-card" data-id="bili-full">
+    <div class="card-head">
+      <span class="badge bilibili">BILI</span>
+      <span class="name">下载完整视频（${v.meta.height || '?'}p）</span>
+    </div>
+    <div class="meta">${
+      ready
+        ? '画面 + 声音合并成一个 mp4' + (total ? ' · 约 ' + fmtSize(total) : '')
+        : '只有画面，没有对应音轨 —— 播放几秒后刷新'
+    }</div>
+    <div class="card-foot">
+      <button class="btn primary" data-act="bili-full"${ready ? '' : ' disabled'}>合并下载</button>
+    </div>
+    <div class="progress">
+      <div class="track"><div class="bar"></div></div>
+      <span class="ptext">准备中…</span>
+    </div>
+  </div>`;
+}
+
 /** 同名文件自动加序号，避免多个 HLS 都叫「页面标题.mp4」 */
 function uniqueNames(list) {
   const seen = new Map();
@@ -224,7 +306,7 @@ function render() {
     list.innerHTML = emptyHtml();
   } else {
     const names = uniqueNames(items);
-    list.innerHTML = ytBannerHtml() + items.map((it, i) => cardHtml(it, names[i])).join('');
+    list.innerHTML = ytBannerHtml() + biliBannerHtml() + items.map((it, i) => cardHtml(it, names[i])).join('');
   }
   updateTip();
 }
@@ -316,6 +398,45 @@ async function handleDownload(item) {
     } else {
       startHls(item.url, filename, item.id);
     }
+    return;
+  }
+
+  if (item.kind === 'bilibili-dash') {
+    setBusy(item.id, '准备下载…');
+    const res = await send({
+      type: 'yt-download',
+      videoUrl: item.meta.videoUrl,
+      audioUrl: item.meta.audioUrl,
+      filename: guessFilename(item),
+      pageUrl: currentTab.url
+    });
+    if (!res.ok) {
+      finishCard(item.id, '启动失败：' + res.error, false);
+      return;
+    }
+    tasks.set(res.taskId, item.id);
+    return;
+  }
+
+  if (item.kind === 'bilibili-direct') {
+    setBusy(item.id, '交给浏览器下载…');
+    const res = await send({ type: 'download-direct', url: item.url, filename: guessFilename(item) });
+    if (!res.ok) {
+      finishCard(item.id, '下载失败：' + (res.error || '未知原因'), false);
+      return;
+    }
+    finishCard(item.id, '已开始下载', true);
+    return;
+  }
+
+  if (item.kind === 'bilibili-audio') {
+    setBusy(item.id, '交给浏览器下载…');
+    const res = await send({ type: 'download-direct', url: item.url, filename: guessFilename(item) });
+    if (!res.ok) {
+      finishCard(item.id, '下载失败：' + (res.error || '未知原因'), false);
+      return;
+    }
+    finishCard(item.id, '已开始下载', true);
     return;
   }
 
@@ -496,12 +617,43 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
+async function startBiliDownload() {
+  const { dash } = biliStreams();
+  const v = dash[0];
+  if (!v) {
+    toast('没有找到 B 站视频流');
+    return;
+  }
+  if (!v.meta.audioUrl) {
+    toast('声音轨还没读到，播放几秒后再刷新');
+    return;
+  }
+  setBusy('bili-full', '准备下载…');
+  const res = await send({
+    type: 'yt-download',
+    videoUrl: v.meta.videoUrl,
+    audioUrl: v.meta.audioUrl,
+    filename: guessFilename(v),
+    pageUrl: currentTab.url
+  });
+  if (!res.ok) {
+    finishCard('bili-full', '启动失败：' + res.error, false);
+    return;
+  }
+  tasks.set(res.taskId, 'bili-full');
+}
+
 document.addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-act]');
   if (!btn) return;
 
   if (btn.dataset.act === 'yt-full') {
     await startYtDownload();
+    return;
+  }
+
+  if (btn.dataset.act === 'bili-full') {
+    await startBiliDownload();
     return;
   }
 

@@ -174,16 +174,26 @@ body {
   }
 }
 
-/* YouTube 合并下载入口，稍微突出一点 */
+/* YouTube / B 站 合并下载入口，稍微突出一点 */
 .yt-card {
   border-color: rgba(214, 48, 49, 0.28);
   box-shadow: 0 2px 12px rgba(214, 48, 49, 0.1);
+}
+
+.bili-card {
+  border-color: rgba(35, 173, 229, 0.32);
+  box-shadow: 0 2px 12px rgba(35, 173, 229, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   .yt-card {
     border-color: rgba(255, 107, 107, 0.32);
     box-shadow: 0 2px 12px rgba(255, 107, 107, 0.08);
+  }
+
+  .bili-card {
+    border-color: rgba(35, 173, 229, 0.35);
+    box-shadow: 0 2px 12px rgba(35, 173, 229, 0.08);
   }
 }
 
@@ -225,10 +235,20 @@ body {
   color: #d32f2f;
 }
 
+.badge.bilibili {
+  background: rgba(35, 173, 229, 0.13);
+  color: #23ade5;
+}
+
 @media (prefers-color-scheme: dark) {
   .badge.youtube {
     background: rgba(255, 82, 82, 0.18);
     color: #ff6b6b;
+  }
+
+  .badge.bilibili {
+    background: rgba(35, 173, 229, 0.18);
+    color: #6dd5ff;
   }
 }
 

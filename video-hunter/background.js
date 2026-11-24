@@ -409,6 +409,22 @@ async function ytDownload({ videoUrl, audioUrl, filename, pageUrl }) {
   return { ok: true, taskId };
 }
 
+function handlePageMedia(msg) {
+  if (!msg.results || !msg.results.length) return { ok: true, count: 0 };
+  const tabId = msg.tabId;
+  if (tabId == null || tabId < 0) return { ok: false, error: 'invalid tab' };
+
+  let items = [];
+  if (msg.site === 'bilibili') {
+    items = normalizeBilibili(msg.results, msg.title);
+  }
+
+  for (const item of items) {
+    addItem(tabId, item);
+  }
+  return { ok: true, count: items.length };
+}
+
 async function pageVideos(tabId) {
   try {
     const results = await chrome.scripting.executeScript({
@@ -437,6 +453,70 @@ function broadcast(msg) {
   chrome.runtime.sendMessage(msg).catch(() => {});
 }
 
+function normalizeBilibili(items, title) {
+  const baseTitle = String(title || 'bilibili')
+    .replace(/\s*-\s*bilibili\s*\.?\s*$/i, '')
+    .replace(/[\\/:*?"<>|\r\n\t]/g, '_')
+    .trim();
+
+  // 按清晰度把视频分组
+  const videos = items.filter((x) => x.type === 'dash-video').sort((a, b) => (b.height || 0) - (a.height || 0));
+  const audios = items.filter((x) => x.type === 'dash-audio').sort((a, b) => (b.bandwidth || 0) - (a.bandwidth || 0));
+  const directs = items.filter((x) => x.type === 'direct');
+
+  const out = [];
+
+  // 直链最省事，直接展示
+  for (const d of directs) {
+    out.push({
+      url: d.url,
+      kind: 'bilibili-direct',
+      mime: 'video/flv',
+      size: d.size,
+      at: Date.now(),
+      meta: { title: baseTitle, duration: d.duration }
+    });
+  }
+
+  // 每个清晰度生成一个可合并下载的条目
+  for (let i = 0; i < videos.length; i++) {
+    const v = videos[i];
+    const audio = audios[0] || null;
+    out.push({
+      url: v.url,
+      kind: 'bilibili-dash',
+      mime: 'video/mp4',
+      size: (v.size || 0) + (audio && audio.size ? audio.size : 0),
+      at: Date.now(),
+      meta: {
+        title: baseTitle,
+        resolution: `${v.width}x${v.height}`,
+        height: v.height,
+        videoUrl: v.url,
+        audioUrl: audio ? audio.url : null,
+        duration: v.duration,
+        codec: v.codec
+      }
+    });
+  }
+
+  // 没有视频但有音频的极端情况
+  if (!videos.length && audios.length) {
+    for (const a of audios) {
+      out.push({
+        url: a.url,
+        kind: 'bilibili-audio',
+        mime: 'audio/mp4',
+        size: a.size,
+        at: Date.now(),
+        meta: { title: baseTitle, label: a.label || '音频', duration: a.duration }
+      });
+    }
+  }
+
+  return out;
+}
+
 async function handle(msg) {
   switch (msg.type) {
     case 'list':
@@ -454,6 +534,8 @@ async function handle(msg) {
       return await ytDownload(msg);
     case 'page-videos':
       return await pageVideos(msg.tabId);
+    case 'page-media':
+      return handlePageMedia(msg);
     default:
       return { ok: false, error: 'unknown message type: ' + msg.type };
   }
@@ -461,7 +543,11 @@ async function handle(msg) {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || msg.target !== 'background') return; // 不占用响应通道
-  handle(msg)
+  const payload = { ...msg };
+  if (payload.type === 'page-media' && sender && sender.tab && sender.tab.id != null) {
+    payload.tabId = sender.tab.id;
+  }
+  handle(payload)
     .then(sendResponse)
     .catch((e) => sendResponse({ ok: false, error: String((e && e.message) || e) }));
   return true;
