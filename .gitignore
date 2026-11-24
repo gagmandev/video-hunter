@@ -20,3 +20,10 @@ desktop.ini
 
 # 本地工作数据
 .workbuddy-ai/
+
+# 桌面客户端的本地数据（证书私钥绝对不能提交）
+video-hunter-desktop/certs/
+video-hunter-desktop/downloads/
+video-hunter-desktop/config.json
+video-hunter-desktop/*.vhmeta
+video-hunter-desktop/*.part*
